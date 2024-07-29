@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004-2024 The mzmine Development Team
+ * Copyright (c) 2004-2024 The MZmine Development Team
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -29,13 +29,37 @@ import static ai.djl.ndarray.types.DataType.FLOAT32;
 
 import ai.djl.ndarray.NDArray;
 import ai.djl.translate.TranslateException;
-import io.github.mzmine.datamodel.Scan;
+import io.github.mzmine.datamodel.MassSpectrum;
+import java.util.List;
 
 public abstract class EmbeddingBasedSimilarity {
 
-  public abstract NDArray predictEmbedding(Scan[] scans) throws TranslateException;
+  public abstract NDArray predictEmbedding(List<? extends MassSpectrum> scans)
+      throws TranslateException;
 
-  public float[][] dotProduct(NDArray embedding1, NDArray embedding2) {
+  public float[][] predictMatrixSymmetric(List<? extends MassSpectrum> scans)
+      throws TranslateException {
+    NDArray embeddings1 = predictEmbedding(scans);
+
+    return dotProduct(embeddings1, embeddings1);
+  }
+
+  public float[][] predictMatrix(List<? extends MassSpectrum> scan1,
+      List<? extends MassSpectrum> scan2) throws TranslateException {
+    NDArray embeddings1 = predictEmbedding(scan1);
+    NDArray embeddings2 = predictEmbedding(scan2);
+
+    return dotProduct(embeddings1, embeddings2);
+  }
+
+  /**
+   * TODO add documentation
+   *
+   * @param embedding1
+   * @param embedding2
+   * @return
+   */
+  public static float[][] dotProduct(NDArray embedding1, NDArray embedding2) {
     NDArray norm1 = embedding1.norm(new int[]{1});
     NDArray norm2 = embedding2.norm(new int[]{1});
     embedding1 = embedding1.transpose().div(norm1).transpose();
@@ -43,20 +67,13 @@ public abstract class EmbeddingBasedSimilarity {
     return convertNDArrayToFloatMatrix(embedding1.dot(embedding2.transpose()));
   }
 
-  public float[][] predictMatrixSymmetric(Scan[] scans) throws TranslateException {
-    NDArray embeddings1 = this.predictEmbedding(scans);
-
-    return this.dotProduct(embeddings1, embeddings1);
-  }
-
-  public float[][] predictMatrix(Scan[] scan1, Scan[] scan2) throws TranslateException {
-    NDArray embeddings1 = this.predictEmbedding(scan1);
-    NDArray embeddings2 = this.predictEmbedding(scan2);
-
-    return this.dotProduct(embeddings1, embeddings2);
-  }
-
-  public float[][] convertNDArrayToFloatMatrix(NDArray ndArray) {
+  /**
+   * TODO add documentation
+   *
+   * @param ndArray
+   * @return
+   */
+  public static float[][] convertNDArrayToFloatMatrix(NDArray ndArray) {
     long[] shape = ndArray.getShape().getShape();
     if (shape.length != 2) {
       throw new AssertionError("The NDArray is not a 2D matrix");
